@@ -1,0 +1,207 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://service-overtchat/schema/config.schema.json",
+    "title": "Service-Overtchat Configuration Schema",
+    "description": "Schéma de configuration principal pour Service-Overtchat / IriX",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "project",
+        "paths",
+        "git",
+        "modes"
+    ],
+    "properties": {
+        "project": {
+            "type": "object",
+            "description": "Informations générales du projet",
+            "required": [
+                "name",
+                "version"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Nom du projet"
+                },
+                "version": {
+                    "type": "string",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                    "description": "Version du projet (semver)"
+                },
+                "environment": {
+                    "type": "string",
+                    "enum": [
+                        "dev",
+                        "test",
+                        "prod"
+                    ],
+                    "default": "dev",
+                    "description": "Environnement d'exécution"
+                }
+            }
+        },
+        "paths": {
+            "type": "object",
+            "description": "Chemins des scripts et dossiers utilisés par le programme",
+            "additionalProperties": false,
+            "required": [
+                "base",
+                "scripts",
+                "config"
+            ],
+            "properties": {
+                "base": {
+                    "type": "string",
+                    "description": "Dossier racine du projet"
+                },
+                "scripts": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "install",
+                        "uninstall",
+                        "update",
+                        "control"
+                    ],
+                    "properties": {
+                        "install": {
+                            "type": "string",
+                            "description": "Chemin du script d'installation"
+                        },
+                        "uninstall": {
+                            "type": "string",
+                            "description": "Chemin du script de désinstallation"
+                        },
+                        "update": {
+                            "type": "string",
+                            "description": "Chemin du script de mise à jour"
+                        },
+                        "control": {
+                            "type": "string",
+                            "description": "Chemin du script de contrôle / vérification"
+                        }
+                    }
+                },
+                "config": {
+                    "type": "string",
+                    "description": "Dossier contenant les fichiers de configuration"
+                }
+            }
+        },
+        "git": {
+            "type": "object",
+            "description": "Configuration Git / récupération distante",
+            "additionalProperties": false,
+            "required": [
+                "enabled"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Active la récupération via Git"
+                },
+                "repository": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL du dépôt Git"
+                },
+                "branch": {
+                    "type": "string",
+                    "default": "main",
+                    "description": "Branche Git utilisée"
+                },
+                "autoUpdate": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Mettre à jour automatiquement les scripts"
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "enabled": {
+                                "const": true
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "repository"
+                        ]
+                    }
+                }
+            ]
+        },
+        "modes": {
+            "type": "object",
+            "description": "Modes disponibles dans le programme",
+            "additionalProperties": false,
+            "required": [
+                "install",
+                "uninstall",
+                "update",
+                "init"
+            ],
+            "properties": {
+                "install": {
+                    "type": "boolean"
+                },
+                "uninstall": {
+                    "type": "boolean"
+                },
+                "update": {
+                    "type": "boolean"
+                },
+                "init": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "logging": {
+            "type": "object",
+            "description": "Options de journalisation",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "level": {
+                    "type": "string",
+                    "enum": [
+                        "debug",
+                        "info",
+                        "warn",
+                        "error"
+                    ],
+                    "default": "info"
+                },
+                "file": {
+                    "type": "string",
+                    "description": "Fichier de log"
+                }
+            }
+        },
+        "security": {
+            "type": "object",
+            "description": "Paramètres de sécurité",
+            "additionalProperties": false,
+            "properties": {
+                "requireRoot": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Exécution requiert les droits root"
+                },
+                "allowRemoteDownload": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Autorise le téléchargement de scripts distants"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "status": "idle",
+    "lastAction": null,
+    "lastRun": null,
+    "installed": false,
+    "initialized": false,
+    "currentMode": null,
+    "errors": {
+        "count": 0,
+        "last": null
+    },
+    "runtime": {
+        "pid": null,
+        "user": null,
+        "host": null
+    }
+}

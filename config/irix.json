@@ -1,0 +1,81 @@
+{
+    "irix": {
+        "name": "IriX",
+        "version": "0.1.0",
+        "enabled": true,
+        "mode": "standard"
+    },
+
+    "engine": {
+        "strict": true,
+        "failFast": true,
+        "dryRun": false,
+        "interactive": true
+    },
+
+    "features": {
+        "builder": true,
+        "runtime": true,
+        "gitFallback": true,
+        "autoInit": true,
+        "selfUpdate": false
+    },
+
+    "execution": {
+        "defaultMode": "install",
+        "allowedModes": [
+            "install",
+            "uninstall",
+            "update",
+            "init",
+            "control",
+            "status"
+        ],
+        "requireConfirmation": [
+            "install",
+            "uninstall"
+        ]
+    },
+
+    "validation": {
+        "config": true,
+        "schema": true,
+        "paths": true,
+        "scripts": true,
+        "runtime": true
+    },
+
+    "timeouts": {
+        "global": 300,
+        "git": 120,
+        "script": 180
+    },
+
+    "ui": {
+        "colors": true,
+        "icons": true,
+        "progress": true,
+        "verbosity": "normal"
+    },
+
+    "logging": {
+        "enabled": true,
+        "level": "info",
+        "rotate": true,
+        "maxSizeMB": 5,
+        "keepFiles": 5
+    },
+
+    "security": {
+        "lockExecution": true,
+        "checkRoot": true,
+        "sanitizeEnv": true,
+        "allowedUsers": []
+    },
+
+    "debug": {
+        "enabled": false,
+        "trace": false,
+        "dumpConfig": false
+    }
+}

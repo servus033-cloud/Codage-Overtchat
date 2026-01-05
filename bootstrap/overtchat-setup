@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+
+###############################################################################
+# OVERTCHAT SETUP – IriX Engine
+###############################################################################
+
+[[ "${1:-}" == "--debug" ]] && set -x
+set -euo pipefail
+export PS4='+ [${BASH_SOURCE}:${LINENO}] '
+
+###############################################################################
+# Globals
+###############################################################################
+
+OS="$(uname)"
+USER_ID="$(id -u)"
+
+###############################################################################
+# File Config Default
+###############################################################################
+
+export default_file="$HOME/Overtchat/config/config-base.json"
+
+###############################################################################
+# UI helpers
+###############################################################################
+
+valid()   { echo -e "\033[1;32m$*\033[0m"; }
+info()    { echo -e "\033[1;34m$*\033[0m"; }
+warning() { echo -e "\033[1;33m$*\033[0m"; }
+error()   { echo -e "\033[1;31m$*\033[0m"; }
+
+###############################################################################
+# Guards
+###############################################################################
+
+[[ "$OS" != "Linux" ]] && { error "Système non supporté"; exit 1; }
+[[ "$USER_ID" -eq 0 ]] && { error "Ne pas exécuter en root"; exit 1; }
+
+###############################################################################
+# Dependencies
+###############################################################################
+
+command -v jq >/dev/null 2>&1 || {
+    warning "jq manquant – installation"
+    sudo apt-get update && sudo apt-get install -y jq
+    valid "jq installé"
+}
+
+###############################################################################
+# Message Accueil
+###############################################################################
+cat <<'EOF'
+
+                Bienvenue sur le programme Service-Overtchat by SerVuS
+
+EOF
+
+###############################################################################
+# Loader Config File
+###############################################################################
+if [[ ! -d "$HOME/Overtchat" && ! -f "$default_file" ]]; then
+    read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? Y/N " rep
+    if [[ -v rep || -z "$rep" ]]; then
+        # .json null
+        log="false"
+    fi
+    if [[ "$rep" =~ ^[Yy]$ ]]; then
+        # .json ok
+        log="true"
+    fi
+else
+    # .json ok
+    log="true"
+fi
+
+# Si true ok
+if [[ "$log" == "true" ]]; then
+    # si .json exists ok
+    [[ -f "$default_file" ]] || {
+# .json null
+    mkdir -p "$HOME/Overtchat/config/"
+cat >"$default_file" <<EOF
+    {
+        "start": {
+            "version": "1.0.0"
+        },
+        "folders": {
+            "home": "$HOME/Overtchat",
+            "boot": "$HOME/Overtchat/bootstrap",
+            "builder": "$HOME/Overtchat/builder",
+            "components": "$HOME/Overtchat/components",
+            "server": "$HOME/Overtchat/components/server",
+            "server-bin": "$HOME/Overtchat/components/server/bin",
+            "server-conf": "$HOME/Overtchat/components/server/conf",
+            "server-lib": "$HOME/Overtchat/components/server/lib",
+            "service": "$HOME/Overtchat/components/service",
+            "service-bin": "$HOME/Overtchat/components/service/bin",
+            "service-conf": "$HOME/Overtchat/components/service/conf",
+            "service-lib": "$HOME/Overtchat/components/service/lib",
+            "config": "$HOME/Overtchat/config",
+            "installer": "$HOME/Overtchat/installer",
+            "runtime": "$HOME/Overtchat/runtime",
+            "logs": "$HOME/Overtchat/runtime/logs"
+        },
+        "json": {
+            "builder": "$HOME/Overtchat/builder/builder.json",
+            "server": "$HOME/Overtchat/components/server/conf/server.json",
+            "server": "$HOME/Overtchat/components/service/conf/service.json",
+            "config": "$HOME/Overtchat/config/config.json",
+            "defaults": "$HOME/Overtchat/config/defaults.json",
+            "irix": "$HOME/Overtchat/config/irix.json",
+            "paths": "$HOME/Overtchat/config/paths.json",
+            "schema": "$HOME/Overtchat/config/schema.json",
+            "cmds_irix": "$HOME/Overtchat/runtime/cmds_irix.json",
+            "state": "$HOME/Overtchat/runtime/state.json",
+            "version": "$HOME/Overtchat/runtime/version.json"
+        },
+        "git": {
+            "depot": "/tmp/.Overtchat",
+            "owner": "servus033-cloud",
+            "repot": "Overtchat",
+            "branch": "main"
+        }
+    }
+EOF
+}
+else
+    echo "Arrêt du programme."; exit 0
+fi
+
+###############################################################################
+# Récupération des données standart
+###############################################################################
+export BASE_DIR="$(jq -r '.folders.home' "$default_file")"
+
+###############################################################################
+# Download from Git
+###############################################################################
+
+download_from_github() {
+  local repo_path="$1"
+  local local_path="$2"
+
+  echo "Téléchargement : $repo_path → $local_path"
+  mkdir -p "$(dirname "$local_path")"
+
+  curl -fSL \
+    -o "$local_path" \
+    "https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/$GITHUB_BRANCH/$repo_path"
+}
+
+###############################################################################
+# Create Directories
+###############################################################################
+
+#mkdir -p \
+#    "$BASE_DIR" \
+#    "$BASE_CONFIG" \
+#    "$BASE_BUILDER" \
+#    "$BASE_RUNTIME" \
+#    "$BASE_BIN"
+
+[[ -d "$(jq -r '.folders[]' "$default_file")" ]] || {
+    mkdir -p $(jq -r '.folders[]' "$default_file")
+}
+
+###############################################################################
+# Create Files JSON
+###############################################################################
+
+[[ -f "$(jq -r '.json[]' "$default_file")" ]] || {
+    # on choisi de télécharger les fichiers manquants
+
+    # si fichiers inexistant dans la base git, alors on créer un fichier vide
+    touch $(jq -r '.json[]' "$default_file")
+}
+
+###############################################################################
+# JSON validation
+###############################################################################
+
+validate_json() {
+    local f="$1"
+    [[ -f "$f"]] || return 1
+    [[ -s "$f" ]] || return 1
+    jq -e 'type=="object" and length>0' "$f" >/dev/null
+    exit 1
+}
+
+###############################################################################
+# Folders Git > /tmp/.Overtchat
+###############################################################################
+
+ensure_json() {
+  local repo_path="$1"
+  local local_path="$2"
+
+  if [ ! -f "$local_path" ]; then
+    error "Fichier manquant : $(basename -- "$local_path") - Téléchargement en cours ..."
+    download_from_github "$repo_path" "$local_path"; sleep 2
+  fi
+
+  validate_json "$local_path"
+}
+
+ensure_json "config/$(basename -- "$(jq -r '.json[]' "$default_file")")" "$default_file"
+
+###############################################################################
+# Merge config (defaults + config)
+###############################################################################
+
+MERGED_CONFIG="$(jq -s '.[0] * .[1]' "$(jq -r '.json.defaults' "$default_file")" "$(jq -r '.json.config' "$default_file")")"
+
+###############################################################################
+# Git bootstrap (si activé)
+###############################################################################
+
+git_enabled="$(jq -r '.git.enabled' <<<"$MERGED_CONFIG")"
+
+bootstrap_git() {
+    local repo branch
+    repo="$(jq -r '.git.repository' <<<"$MERGED_CONFIG")"
+    branch="$(jq -r '.git.branch' <<<"$MERGED_CONFIG")"
+    depot="$(jq -r '.git.depot' <<<"$MERGED_CONFIG")"
+
+    [[ -d "$depot/.git" ]] && return 0
+
+    warning "Bootstrap Git depuis $repo"
+    git clone --depth 1 -b "$branch" "$repo" "$depot" || {
+        error "Échec du clone Git"
+        exit 1
+    }
+}
+
+[[ "$git_enabled" == "true" ]] && bootstrap_git
+
+###############################################################################
+# Runtime state init
+###############################################################################
+export STATE_JSON="$(jq -r '.json.state' "$default_file")"
+
+[[ -f "$STATE_JSON" ]] || cat >"$STATE_JSON" <<EOF
+{
+    "status": "idle",
+    "lastAction": null,
+    "lastRun": null,
+    "errors": { "count": 0, "last": null }
+}
+EOF
+
+###############################################################################
+# Script resolver
+###############################################################################
+
+resolve_script() {
+    local name="$1"
+    local path
+    local json="$(jq -r '.json.paths' "$default_file")"
+
+    path="$(jq -r ".scripts.$name" "$json")"
+    [[ -z "$path" || "$path" == "null" ]] && return 1
+
+    local full="$BASE_DIR/$path"
+    [[ -f "$full" ]] || return 1
+
+    chmod +x "$full" 2>/dev/null || true
+    echo "$full"
+}
+
+###############################################################################
+# Execute action
+###############################################################################
+
+run_action() {
+    local action="$1"
+    local script
+
+    script="$(resolve_script "$action")" || {
+        error "Script introuvable pour l’action : $action"
+        return 1
+    }
+
+    info "Exécution : $action"
+    jq ".status=\"running\" | .lastAction=\"$action\" | .lastRun=\"$(date -Is)\"" \
+        "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
+
+    bash "$script"
+
+    jq ".status=\"idle\"" "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
+}
+
+###############################################################################
+# Banner
+###############################################################################
+
+clear
+cat <<EOF
+====================================================
+        OVERTCHAT – IRIX SETUP
+====================================================
+EOF
+
+###############################################################################
+# Menu
+###############################################################################
+
+while true; do
+cat <<EOF
+
+    1) Quitter
+    2) Control
+    3) Install
+    4) Uninstall
+    5) Init
+    6) Update
+    7) Status
+
+EOF
+    read -rp "Votre choix : " choice
+
+    case "$choice" in
+        1) warning "Arrêt"; exit 0 ;;
+        2) run_action "control" ;;
+        3) run_action "install" ;;
+        4) run_action "uninstall" ;;
+        5) run_action "init" ;;
+        6) run_action "update" ;;
+        7) run_action "status" ;;
+        *) warning "Choix invalide" ;;
+    esac
+done

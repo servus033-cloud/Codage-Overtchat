@@ -1,0 +1,16 @@
+{
+    "project": {
+        "name": "Service-Overtchat"
+    },
+    "version": {
+        "installed": null,
+        "available": null,
+        "lastChecked": null
+    },
+    "source": {
+        "type": null,
+        "repository": null,
+        "branch": null,
+        "commit": null
+    }
+}

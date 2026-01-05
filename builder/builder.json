@@ -1,0 +1,49 @@
+{
+    "builder": {
+        "name": "Service-Overtchat Builder",
+        "version": "1.0.0",
+        "enabled": true
+    },
+
+    "sources": {
+        "local": {
+            "enabled": true,
+            "path": "scripts"
+        },
+        "git": {
+            "enabled": true,
+            "repository": "https://github.com/servus033-cloud/Overtchat",
+            "branch": "main",
+            "subdirectory": "scripts"
+        }
+    },
+
+    "build": {
+        "mode": "auto",
+        "order": [
+            "control",
+            "install",
+            "update",
+            "uninstall",
+            "init"
+        ],
+        "stopOnError": true,
+        "cleanBeforeBuild": false
+    },
+
+    "validation": {
+        "checkExecutable": true,
+        "checkShebang": true,
+        "checkPermissions": true
+    },
+
+    "output": {
+        "directory": "bin",
+        "overwrite": true
+    },
+
+    "logging": {
+        "enabled": true,
+        "level": "info"
+    }
+}

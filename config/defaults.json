@@ -1,0 +1,39 @@
+{
+    "project": {
+        "name": "Service-Overtchat",
+        "version": "0.1.0",
+        "environment": "dev"
+    },
+    "paths": {
+        "base": "/opt/service-overtchat",
+        "scripts": {
+            "install": "",
+            "uninstall": "",
+            "update": "",
+            "control": ""
+        },
+        "config": "config"
+    },
+    "git": {
+        "enabled": false,
+        "depot": "/tmp/.Overtchat",
+        "repository": "https://github.com/servus033-cloud/Overtchat",
+        "branch": "main",
+        "autoUpdate": false
+    },
+    "modes": {
+        "install": true,
+        "uninstall": true,
+        "update": true,
+        "init": true
+    },
+    "logging": {
+        "enabled": true,
+        "level": "info",
+        "file": "/var/log/service-overtchat.log"
+    },
+    "security": {
+        "requireRoot": true,
+        "allowRemoteDownload": true
+    }
+}

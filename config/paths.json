@@ -1,0 +1,23 @@
+{
+    "base": "/opt/service-overtchat",
+    "directories": {
+        "bin": "bin",
+        "scripts": "scripts",
+        "config": "config",
+        "logs": "/var/log/service-overtchat",
+        "tmp": "/tmp/service-overtchat"
+    },
+    "scripts": {
+        "install": "scripts/install.sh",
+        "uninstall": "scripts/uninstall.sh",
+        "update": "scripts/update.sh",
+        "control": "scripts/control_package.sh",
+        "init": "scripts/init.sh"
+    },
+    "files": {
+        "config": "config/config.json",
+        "defaults": "config/defaults.json",
+        "schema": "config/schema.json",
+        "paths": "config/paths.json"
+    }
+}
