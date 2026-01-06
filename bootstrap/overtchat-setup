@@ -13,8 +13,9 @@ export PS4='+ [${BASH_SOURCE}:${LINENO}] '
 
 OS="$(uname)"
 USER_ID="$(id -u)"
-HOME="$HOME/Overtchat"
-default_file="$HOME/config/config-base.json"
+
+DATA="$HOME/Overtchat"
+default_file="$DATA/config/config-base.json"
 
 ###############################################################################
 # UI helpers
@@ -58,7 +59,7 @@ if [[ ! -f "$default_file" ]]; then
     read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? [Y/N] : " rep
     [[ "$rep" =~ ^[Yy]$ ]] || exit 0
 
-    ! mkdir -p "$HOME/config" >/dev/null
+    ! mkdir -p "$DATA/config" >/dev/null
     info "Téléchargement de < $(basename -- "$default_file") >"
 
     curl -fsSL \
@@ -212,10 +213,25 @@ run_action() {
 }
 
 ###############################################################################
-# Menu
+# Logo
 ###############################################################################
+logo=$BASE_DIR/$(jq -r '.start.logo' "$default_file")
+
+if [[ ! -f "$logo" ]]; then
+    info "Téléchargement du Logo"
+    curl -fsSL \
+      https://raw.githubusercontent.com/Servus33/Overtchat/main/components/service/lib/$(basename -- "$logo") \
+      -o "$(basename -- "$logo")" || {
+        error "Échec du téléchargement du Logo"
+      }
+fi
 
 clear
+[[ -f "$logo" ]] && bash $logo
+
+###############################################################################
+# Menu
+###############################################################################
 
 while true; do
 cat <<EOF

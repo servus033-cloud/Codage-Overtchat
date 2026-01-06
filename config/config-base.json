@@ -1,6 +1,7 @@
 {
   "start": {
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "logo" : "components/service/lib/logo.sh"
   },
 
   "folders": {
