@@ -8,11 +8,12 @@
         "tmp": "/tmp/service-overtchat"
     },
     "scripts": {
-        "install": "scripts/install.sh",
-        "uninstall": "scripts/uninstall.sh",
-        "update": "scripts/update.sh",
-        "control": "scripts/control_package.sh",
-        "init": "scripts/init.sh"
+        "control": "installer/control.sh",
+        "install": "installer/install.sh",
+        "uninstall": "installer/uninstall.sh",
+        "init": "installer/init.sh",
+        "update": "installer/update.sh",
+        "status": "installer/status.sh"
     },
     "files": {
         "config": "config/config.json",

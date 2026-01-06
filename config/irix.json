@@ -1,12 +1,13 @@
 {
     "irix": {
-        "name": "IriX",
         "version": "0.1.0",
-        "enabled": true,
-        "mode": "standard"
+        "enabled": true
     },
 
     "engine": {
+        "name": "IriX",
+        "mode": "stable",
+        "logLevel": "info",
         "strict": true,
         "failFast": true,
         "dryRun": false,
@@ -18,6 +19,8 @@
         "runtime": true,
         "gitFallback": true,
         "autoInit": true,
+        "gitBootstrap": true,
+        "autoRepair": true,
         "selfUpdate": false
     },
 
@@ -70,6 +73,8 @@
         "lockExecution": true,
         "checkRoot": true,
         "sanitizeEnv": true,
+        "allowRoot": false,
+        "requireJq": true,
         "allowedUsers": []
     },
 
