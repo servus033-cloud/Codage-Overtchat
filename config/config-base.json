@@ -36,10 +36,10 @@
     "git": {
         "enabled": true,
         "brutegit": "https://raw.githubusercontent.com",
-        "repository": "https://github.com/Servus33/Overtchat.git",
+        "repository": "https://github.com/servus033-cloud/Codage-Overtchat.git",
         "depot": "/tmp/.Overtchat",
-        "owner": "Servus33",
-        "repot": "Overtchat",
+        "owner": "servus033-cloud",
+        "repot": "Codage-Overtchat",
         "branch": "main"
     }
 }

@@ -79,10 +79,10 @@ if [[ "$log" == "true" ]]; then
         mkdir -p "$HOME/Overtchat/config"; info "Création du dossier > $HOME/Overtchat/config" || {
             error "Impossible de créer le dossier > $HOME/Overtchat/config"; exit 1
         }
-
+#https://raw.githubusercontent.com/Servus33/Overtchat/main/config/config-base.json
         info "Téléchargement du fichier > config-base.json"
         curl -fsSL \
-          https://raw.githubusercontent.com/Servus33/Overtchat/main/config/config-base.json \
+          https://raw.githubusercontent.com/servus033-cloud/Codage-Overtchat/main/config/config-base.json \
           -o "$default_file" || {
               error "Échec du téléchargement du fichier de configuration"
               exit 1
