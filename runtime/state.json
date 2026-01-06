@@ -13,5 +13,7 @@
         "pid": null,
         "user": null,
         "host": null
-    }
+    },
+    "pid": null,
+    "uptime": null
 }

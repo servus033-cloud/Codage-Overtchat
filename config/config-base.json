@@ -1,0 +1,45 @@
+{
+    "start": {
+        "version": "1.0.0"
+    },
+    "folders": {
+        "home": "Overtchat",
+        "boot": "Overtchat/bootstrap",
+        "builder": "Overtchat/builder",
+        "components": "Overtchat/components",
+        "server": "Overtchat/components/server",
+        "server-bin": "Overtchat/components/server/bin",
+        "server-conf": "Overtchat/components/server/conf",
+        "server-lib": "Overtchat/components/server/lib",
+        "service": "Overtchat/components/service",
+        "service-bin": "Overtchat/components/service/bin",
+        "service-conf": "Overtchat/components/service/conf",
+        "service-lib": "Overtchat/components/service/lib",
+        "config": "Overtchat/config",
+        "installer": "Overtchat/installer",
+        "runtime": "Overtchat/runtime",
+        "logs": "Overtchat/runtime/logs"
+    },
+    "json": {
+        "builder": "Overtchat/builder/builder.json",
+        "server": "Overtchat/components/server/conf/server.json",
+        "service": "Overtchat/components/service/conf/service.json",
+        "config": "Overtchat/config/config.json",
+        "defaults": "Overtchat/config/defaults.json",
+        "irix": "Overtchat/config/irix.json",
+        "paths": "Overtchat/config/paths.json",
+        "schema": "Overtchat/config/schema.json",
+        "cmds_irix": "Overtchat/runtime/cmds_irix.json",
+        "state": "Overtchat/runtime/state.json",
+        "version": "Overtchat/runtime/version.json"
+    },
+    "git": {
+        "enabled": true,
+        "brutegit": "https://raw.githubusercontent.com",
+        "repository": "https://github.com/Servus33/Overtchat.git",
+        "depot": "/tmp/.Overtchat",
+        "owner": "Servus33",
+        "repot": "Overtchat",
+        "branch": "main"
+    }
+}

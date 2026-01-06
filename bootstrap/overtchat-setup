@@ -19,7 +19,7 @@ USER_ID="$(id -u)"
 # File Config Default
 ###############################################################################
 
-export default_file="$HOME/Overtchat/config/config-base.json"
+default_file="$HOME/Overtchat/config/config-base.json"
 
 ###############################################################################
 # UI helpers
@@ -59,80 +59,51 @@ EOF
 ###############################################################################
 # Loader Config File
 ###############################################################################
+log="false"
+
 if [[ ! -d "$HOME/Overtchat" && ! -f "$default_file" ]]; then
-    read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? Y/N " rep
-    if [[ -v rep || -z "$rep" ]]; then
-        # .json null
+    read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? [Y/N] : " rep
+
+    if [[ "$rep" =~ ^[Yy]$ ]]; then
+        log="true"
+    else
         log="false"
     fi
-    if [[ "$rep" =~ ^[Yy]$ ]]; then
-        # .json ok
-        log="true"
-    fi
 else
-    # .json ok
     log="true"
 fi
 
-# Si true ok
+# Si autorisé
 if [[ "$log" == "true" ]]; then
-    # si .json exists ok
-    [[ -f "$default_file" ]] || {
-# .json null
-    mkdir -p "$HOME/Overtchat/config/"
-cat >"$default_file" <<EOF
-    {
-        "start": {
-            "version": "1.0.0"
-        },
-        "folders": {
-            "home": "$HOME/Overtchat",
-            "boot": "$HOME/Overtchat/bootstrap",
-            "builder": "$HOME/Overtchat/builder",
-            "components": "$HOME/Overtchat/components",
-            "server": "$HOME/Overtchat/components/server",
-            "server-bin": "$HOME/Overtchat/components/server/bin",
-            "server-conf": "$HOME/Overtchat/components/server/conf",
-            "server-lib": "$HOME/Overtchat/components/server/lib",
-            "service": "$HOME/Overtchat/components/service",
-            "service-bin": "$HOME/Overtchat/components/service/bin",
-            "service-conf": "$HOME/Overtchat/components/service/conf",
-            "service-lib": "$HOME/Overtchat/components/service/lib",
-            "config": "$HOME/Overtchat/config",
-            "installer": "$HOME/Overtchat/installer",
-            "runtime": "$HOME/Overtchat/runtime",
-            "logs": "$HOME/Overtchat/runtime/logs"
-        },
-        "json": {
-            "builder": "$HOME/Overtchat/builder/builder.json",
-            "server": "$HOME/Overtchat/components/server/conf/server.json",
-            "server": "$HOME/Overtchat/components/service/conf/service.json",
-            "config": "$HOME/Overtchat/config/config.json",
-            "defaults": "$HOME/Overtchat/config/defaults.json",
-            "irix": "$HOME/Overtchat/config/irix.json",
-            "paths": "$HOME/Overtchat/config/paths.json",
-            "schema": "$HOME/Overtchat/config/schema.json",
-            "cmds_irix": "$HOME/Overtchat/runtime/cmds_irix.json",
-            "state": "$HOME/Overtchat/runtime/state.json",
-            "version": "$HOME/Overtchat/runtime/version.json"
-        },
-        "git": {
-            "depot": "/tmp/.Overtchat",
-            "owner": "servus033-cloud",
-            "repot": "Overtchat",
-            "branch": "main"
+    if [[ ! -f "$default_file" ]]; then
+        mkdir -p "$HOME/Overtchat/config"; info "Création du dossier > $HOME/Overtchat/config" || {
+            error "Impossible de créer le dossier > $HOME/Overtchat/config"; exit 1
         }
-    }
-EOF
-}
+
+        info "Téléchargement du fichier > config-base.json"
+        curl -fsSL \
+          https://raw.githubusercontent.com/Servus33/Overtchat/main/config/config-base.json \
+          -o "$default_file" || {
+              error "Échec du téléchargement du fichier de configuration"
+              exit 1
+          }
+    fi
 else
-    echo "Arrêt du programme."; exit 0
+    warning "Arrêt du programme."
+    exit 0
+fi
+
+# Vérification finale stricte
+if [[ ! -s "$default_file" ]] || ! jq -e 'type=="object"' "$default_file" >/dev/null 2>&1; then
+    error "Fichier < $default_file > config standard invalide ou corrompu"
+    exit 1
 fi
 
 ###############################################################################
 # Récupération des données standart
 ###############################################################################
-export BASE_DIR="$(jq -r '.folders.home' "$default_file")"
+BASE_DIR="$HOME/$(jq -r '.folders.home' "$default_file")"
+info "Load Home > $BASE_DIR"
 
 ###############################################################################
 # Download from Git
@@ -141,39 +112,27 @@ export BASE_DIR="$(jq -r '.folders.home' "$default_file")"
 download_from_github() {
   local repo_path="$1"
   local local_path="$2"
+  local GITHUB_OWNER=/$(jq -r '.git.owner' "$default_file")
+  local GITHUB_REPO=/$(jq -r '.git.repot' "$default_file")
+  local GITHUB_BRANCH=/$(jq -r '.git.branch' "$default_file")
+  local GITHUB_BRUTE=/$(jq -r '.git.brutegit' "$default_file")
 
-  echo "Téléchargement : $repo_path → $local_path"
-  mkdir -p "$(dirname "$local_path")"
-
+  info "Download > $repo_path → $local_path"
   curl -fSL \
     -o "$local_path" \
-    "https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/$GITHUB_BRANCH/$repo_path"
+    "$GITHUB_BRUTE/$GITHUB_OWNER/$GITHUB_REPO/$GITHUB_BRANCH/$repo_path"
 }
 
 ###############################################################################
 # Create Directories
 ###############################################################################
 
-#mkdir -p \
-#    "$BASE_DIR" \
-#    "$BASE_CONFIG" \
-#    "$BASE_BUILDER" \
-#    "$BASE_RUNTIME" \
-#    "$BASE_BIN"
-
-[[ -d "$(jq -r '.folders[]' "$default_file")" ]] || {
-    mkdir -p $(jq -r '.folders[]' "$default_file")
-}
-
-###############################################################################
-# Create Files JSON
-###############################################################################
-
-[[ -f "$(jq -r '.json[]' "$default_file")" ]] || {
-    # on choisi de télécharger les fichiers manquants
-
-    # si fichiers inexistant dans la base git, alors on créer un fichier vide
-    touch $(jq -r '.json[]' "$default_file")
+[[ -f "$default_file" ]] && {
+info "Load Config File > $default_file"
+jq -r '.folders[]' "$default_file" | while read -r dir; do
+    mkdir -p "$HOME/$dir"
+done } || {
+    error "$dir failed"; exit 1
 }
 
 ###############################################################################
@@ -182,10 +141,9 @@ download_from_github() {
 
 validate_json() {
     local f="$1"
-    [[ -f "$f"]] || return 1
+    [[ -f "$f" ]] || return 1
     [[ -s "$f" ]] || return 1
-    jq -e 'type=="object" and length>0' "$f" >/dev/null
-    exit 1
+    jq -e 'type=="object" and length>0' "$f" >/dev/null || return 1
 }
 
 ###############################################################################
@@ -196,37 +154,93 @@ ensure_json() {
   local repo_path="$1"
   local local_path="$2"
 
-  if [ ! -f "$local_path" ]; then
-    error "Fichier manquant : $(basename -- "$local_path") - Téléchargement en cours ..."
-    download_from_github "$repo_path" "$local_path"; sleep 2
+  if [[ ! -f "$local_path" ]]; then
+    warning "Téléchargement $(basename "$local_path")"
+    download_from_github "$repo_path" "$local_path"
   fi
 
-  validate_json "$local_path"
+  validate_json "$local_path" || {
+    error "JSON invalide : $local_path"
+    exit 1
+  }
 }
 
-ensure_json "config/$(basename -- "$(jq -r '.json[]' "$default_file")")" "$default_file"
+###############################################################################
+# Create Files JSON
+###############################################################################
+
+info "Create & Load Files Json"
+jq -r '.json | to_entries[] | .value' "$default_file" | while read -r json_path; do
+    # Si le fichier existe et est valide, on continue
+    if [[ -f "$HOME/$json_path" ]] && jq -e 'type=="object"' "$HOME/$json_path" >/dev/null 2>&1; then
+        continue
+    fi
+
+    error "JSON manquant ou invalide : $json_path"
+
+    rel_path="${json_path#"$HOME/Overtchat/"}"
+
+    # Tentative de récupération depuis GitHub
+    if ! download_from_github "$rel_path" "$json_path"; then
+        warning "Absent du dépôt Git – création d’un JSON vide"
+        echo '{}' >"$HOME/$json_path"
+    fi
+
+    # Validation finale
+    if ! jq -e 'type=="object"' "$HOME/$json_path" >/dev/null 2>&1; then
+        error "JSON corrompu : $HOME/$json_path"
+        exit 1
+    fi
+done
+
 
 ###############################################################################
 # Merge config (defaults + config)
 ###############################################################################
 
-MERGED_CONFIG="$(jq -s '.[0] * .[1]' "$(jq -r '.json.defaults' "$default_file")" "$(jq -r '.json.config' "$default_file")")"
+DEFAULTS_JSON="$HOME/$(jq -r '.json.defaults' "$default_file")"
+CONFIG_JSON="$HOME/$(jq -r '.json.config' "$default_file")"
+
+# defaults.json doit exister
+[[ -f "$DEFAULTS_JSON" ]] || {
+    error "defaults.json introuvable"
+    exit 1
+}
+
+# config.json optionnel → fallback {}
+[[ -f "$CONFIG_JSON" ]] || echo '{}' >"$HOME/$CONFIG_JSON"
+
+MERGED_CONFIG="$HOME/$(jq -s '
+    (.[0] | select(type=="object")) *
+    (.[1] | select(type=="object"))
+' "$DEFAULTS_JSON" "$CONFIG_JSON")"
+
+jq -e 'type=="object" and length > 0' <<<"$MERGED_CONFIG" >/dev/null || {
+    error "Configuration fusionnée invalide"
+    exit 1
+}
 
 ###############################################################################
 # Git bootstrap (si activé)
 ###############################################################################
 
-git_enabled="$(jq -r '.git.enabled' <<<"$MERGED_CONFIG")"
+git_enabled="$(jq -r '.git.enabled // false' <<<"$MERGED_CONFIG")"
 
 bootstrap_git() {
-    local repo branch
+    local repo branch depot
+
     repo="$(jq -r '.git.repository' <<<"$MERGED_CONFIG")"
-    branch="$(jq -r '.git.branch' <<<"$MERGED_CONFIG")"
+    branch="$(jq -r '.git.branch // "main"' <<<"$MERGED_CONFIG")"
     depot="$(jq -r '.git.depot' <<<"$MERGED_CONFIG")"
+
+    [[ -z "$repo" || "$repo" == "null" ]] && {
+        error "Configuration Git invalide"
+        exit 1
+    }
 
     [[ -d "$depot/.git" ]] && return 0
 
-    warning "Bootstrap Git depuis $repo"
+    warning "Bootstrap Git : $repo ($branch)"
     git clone --depth 1 -b "$branch" "$repo" "$depot" || {
         error "Échec du clone Git"
         exit 1
@@ -238,14 +252,15 @@ bootstrap_git() {
 ###############################################################################
 # Runtime state init
 ###############################################################################
-export STATE_JSON="$(jq -r '.json.state' "$default_file")"
+
+STATE_JSON="$HOME/$(jq -r '.json.state' "$default_file")"
 
 [[ -f "$STATE_JSON" ]] || cat >"$STATE_JSON" <<EOF
 {
-    "status": "idle",
-    "lastAction": null,
-    "lastRun": null,
-    "errors": { "count": 0, "last": null }
+  "status": "idle",
+  "lastAction": null,
+  "lastRun": null,
+  "errors": { "count": 0, "last": null }
 }
 EOF
 
@@ -255,13 +270,15 @@ EOF
 
 resolve_script() {
     local name="$1"
-    local path
-    local json="$(jq -r '.json.paths' "$default_file")"
+    local paths_json rel full
 
-    path="$(jq -r ".scripts.$name" "$json")"
-    [[ -z "$path" || "$path" == "null" ]] && return 1
+    paths_json="$HOME/$(jq -r '.json.paths' "$default_file")"
+    [[ -f "$paths_json" ]] || return 1
 
-    local full="$BASE_DIR/$path"
+    rel="$(jq -r ".scripts.$name // empty" "$paths_json")"
+    [[ -z "$rel" ]] && return 1
+
+    full="$BASE_DIR/$rel"
     [[ -f "$full" ]] || return 1
 
     chmod +x "$full" 2>/dev/null || true
@@ -273,21 +290,29 @@ resolve_script() {
 ###############################################################################
 
 run_action() {
-    local action="$1"
-    local script
+    local action="$1" script
 
     script="$(resolve_script "$action")" || {
-        error "Script introuvable pour l’action : $action"
+        error "Script introuvable : $action"
         return 1
     }
 
     info "Exécution : $action"
-    jq ".status=\"running\" | .lastAction=\"$action\" | .lastRun=\"$(date -Is)\"" \
-        "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
 
-    bash "$script"
+    jq \
+      --arg a "$action" \
+      --arg d "$(date -Is)" \
+      '.status="running" | .lastAction=$a | .lastRun=$d' \
+      "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
 
-    jq ".status=\"idle\"" "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
+    if ! bash "$script"; then
+        jq '.errors.count += 1 | .errors.last = "'"$action"'"' \
+          "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
+        error "Échec action : $action"
+        return 1
+    fi
+
+    jq '.status="idle"' "$STATE_JSON" >"$STATE_JSON.tmp" && mv "$STATE_JSON.tmp" "$STATE_JSON"
 }
 
 ###############################################################################
