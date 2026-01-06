@@ -17,7 +17,7 @@
     "git": {
         "enabled": true,
         "depot": "/tmp/.Overtchat",
-        "repository": "https://github.com/servus033-cloud/Overtchat",
+        "repository": "https://github.com/Servus33/Overtchat",
         "branch": "main",
         "autoUpdate": false
     },
