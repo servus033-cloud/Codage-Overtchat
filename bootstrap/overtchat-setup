@@ -14,6 +14,8 @@ export PS4='+ [${BASH_SOURCE}:${LINENO}] '
 OS="$(uname)"
 USER_ID="$(id -u)"
 
+DRY_RUN=false
+
 DATA="$HOME/Overtchat"
 default_file="$DATA/config/config-base.json"
 
@@ -44,6 +46,31 @@ command -v jq >/dev/null 2>&1 || {
 }
 
 ###############################################################################
+# Git raw download
+###############################################################################
+
+download_from_github() {
+    local folders="$1"
+    local files="$2"
+
+    local owner repo branch brute
+    owner="$(jq -r '.git.owner' "$default_file")"
+    repo="$(jq -r '.git.repo' "$default_file")"
+    branch="$(jq -r '.git.branch' "$default_file")"
+    http="$(jq -r '.git.brutegit' "$default_file")"
+
+    info "Download > $folders → $files"
+
+    curl -fsSL \
+   # https://raw.githubusercontent.com/Servus33/Overtchat/main/builder/builder.json
+      "$http/$owner/$repo/$branch/$folders/$files" \
+      -o "$files" || {
+        error "Échec du téléchargement de < $files >"
+        exit 1
+      }
+}
+
+###############################################################################
 # Welcome
 ###############################################################################
 
@@ -55,179 +82,144 @@ EOF
 # Bootstrap config-base.json
 ###############################################################################
 
-if [[ ! -f "$default_file" ]]; then
-    read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? [Y/N] : " rep
-    [[ "$rep" =~ ^[Yy]$ ]] || exit 0
+init_config() {
+    if [[ ! -f "$default_file" ]]; then
+        read -rp "Vous installez Service-Overtchat. Voulez-vous continuer ? [Y/N] : " rep
+        [[ "$rep" =~ ^[Yy]$ ]] || exit 0
 
-    ! mkdir -p "$DATA/config" >/dev/null
-    info "Téléchargement de < $(basename -- "$default_file") >"
+        ! mkdir -p "$DATA/config" >/dev/null
+        info "Téléchargement de < $(basename -- "$default_file") >"
 
-    curl -fsSL \
-      https://raw.githubusercontent.com/Servus33/Overtchat/main/config/$(basename -- "$default_file") \
-      -o "$default_file" || {
-        error "Échec du téléchargement de < $(basename -- "$default_file") >"
-        exit 1
-      }
-fi
+        curl -fsSL \
+        https://raw.githubusercontent.com/Servus33/Overtchat/main/config/$(basename -- "$default_file") \
+        -o "$default_file" || {
+            error "Échec du téléchargement de < $(basename -- "$default_file") >"
+            return 1
+        }
+    fi
 
-jq -e 'type=="object"' "$default_file" >/dev/null || {
-    error "$(basename -- "$default_file") invalide"
-    exit 1
-}
-
-###############################################################################
-# Base dirs
-###############################################################################
-
-BASE_DIR="$HOME/$(jq -r '.folders.home' "$default_file")"
-if [[ -z "$BASE_DIR" ]]; then
-    error "La valeur 'home' dans le fichier $(basename -- "$default_file") est vide"; exit 1
-fi
-
-info "Load Home > $BASE_DIR"
-
-###############################################################################
-# Git raw download
-###############################################################################
-
-download_from_github() {
-    local repo_path="$1"
-    local local_path="$2"
-
-    local owner repo branch brute
-    owner="$(jq -r '.git.owner' "$default_file")"
-    repo="$(jq -r '.git.repo' "$default_file")"
-    branch="$(jq -r '.git.branch' "$default_file")"
-    brute="$(jq -r '.git.brutegit' "$default_file")"
-
-    [[ "$repo_path" == Overtchat/* ]] && {
-        error "Chemin Git invalide : $repo_path"
+    jq -e 'type=="object"' "$default_file" >/dev/null || {
+        error "$(basename -- "$default_file") invalide"
         return 1
     }
-
-    mkdir -p "$(dirname "$local_path")"
-    info "Download > $repo_path → $local_path"
-
-    curl -fSL \
-      "$brute/$owner/$repo/$branch/$repo_path" \
-      -o "$local_path"
 }
 
-###############################################################################
-# Create folders
-###############################################################################
-
-jq -r '.folders[] | select(length>0)' "$default_file" | while read -r dir; do
-  ! mkdir -p "$BASE_DIR/$dir" >/dev/null
-done
+init_config || exit 1
+jq empty "$default_file" || exit 1
 
 ###############################################################################
-# JSON validation
+# Base folders & files
 ###############################################################################
 
-validate_json() {
-    [[ -f "$1" ]] && [[ -s "$1" ]] && jq -e 'type=="object"' "$1" >/dev/null
+JSON="$default_file"
+GIT_BASE_URL="https://raw.githubusercontent.com/Servus033/null/main"
+
+fetch_file() {
+    local url="$1"
+    local dest="$2"
+
+    if curl -fsSL "$url" -o "$dest"; then
+        echo "[OK] $dest"
+    else
+        echo "[MISS] $dest (créé vide)"
+        touch "$dest"
+    fi
 }
 
-###############################################################################
-# Create & load JSON files
-###############################################################################
+create_tree() {
+    local base_path="$1"
+    local json_path="$2"
+    local repo_path="$3"
 
-info "Create & Load Files Json"
-
-jq -r '.json[]' "$default_file" | while read -r repo_path; do
-    local_path="$BASE_DIR/$repo_path"
-
-    if validate_json "$local_path"; then
-        continue
+    # Si c'est un array → fichiers
+    if jq -e "$json_path | type == \"array\"" "$JSON" >/dev/null; then
+        jq -r "$json_path[]" "$JSON" | while read -r file; do
+            local dest="$base_path/$file"
+            local url="$GIT_BASE_URL/$repo_path/$file"
+            fetch_file "$url" "$dest"
+        done
     fi
 
-    error "JSON manquant ou invalide : $repo_path"
-
-    if ! download_from_github "$repo_path" "$local_path"; then
-        warning "Fallback JSON vide : $local_path"
-        echo '{}' >"$local_path"
+    # Si c'est un objet → sous-dossiers
+    if jq -e "$json_path | type == \"object\"" "$JSON" >/dev/null; then
+        jq -r "$json_path | keys[]" "$JSON" | while read -r key; do
+            mkdir -p "$base_path/$key"
+            create_tree "$base_path/$key" "$json_path[\"$key\"]" "$repo_path/$key"
+        done
     fi
+}
 
-    validate_json "$local_path" || {
-        error "JSON corrompu : $local_path"
-        exit 1
-    }
-done
+ROOT=$(jq -r 'keys[]' "$JSON")
+
+mkdir -p "$ROOT"
+create_tree "$ROOT" ".\"$ROOT\"" "$ROOT"
+find Overtchat -name "*.sh" -exec chmod +x {} \;
 
 ###############################################################################
 # Merge config
 ###############################################################################
 
-DEFAULTS_JSON="$BASE_DIR/$(jq -r '.json.defaults' "$default_file")"
-CONFIG_JSON="$BASE_DIR/$(jq -r '.json.config' "$default_file")"
+CONFIG_DIR="$HOME/Overtchat/config"
+for f in config-base.json config.json defaults.json irix.json paths.json schema.json; do
+    [[ -f "$CONFIG_DIR/$f" ]] || echo '{}' >"$CONFIG_DIR/$f"
+done
 
-[[ -f "$CONFIG_JSON" ]] || echo '{}' >"$CONFIG_JSON"
+# Merge safe
+MERGED_CONFIG=$(jq -s 'map(. // {}) | add' \
+    "$CONFIG_DIR/config-base.json" \
+    "$CONFIG_DIR/config.json")
 
-MERGED_CONFIG="$(jq -s '.[0] * .[1]' "$DEFAULTS_JSON" "$CONFIG_JSON")"
+# Vérifier que c'est bien un objet
 jq -e 'type=="object"' <<<"$MERGED_CONFIG" >/dev/null || exit 1
 
 ###############################################################################
 # Git bootstrap
 ###############################################################################
 
-if [[ "$(jq -r '.git.enabled' <<<"$MERGED_CONFIG")" == "true" ]]; then
-    repo="$(jq -r '.git.repository' <<<"$MERGED_CONFIG")"
-    branch="$(jq -r '.git.branch' <<<"$MERGED_CONFIG")"
-    depot="$(jq -r '.git.depot' <<<"$MERGED_CONFIG")"
+git_init() {
+    if [[ "$(jq -r '.git.enabled' <<<"$MERGED_CONFIG")" == "true" ]] &&
+       [[ "$(jq -r '.git.mode' <<<"$MERGED_CONFIG")" == "dev" ]]; then
 
-    [[ -d "$depot/.git" ]] || {
-        warning "Clone Git $repo"
-        git clone --depth 1 -b "$branch" "$repo" "$depot"
-    }
-fi
+        repo="$(jq -r '.git.repository' <<<"$MERGED_CONFIG")"
+        branch="$(jq -r '.git.branch' <<<"$MERGED_CONFIG")"
+        depot="$(jq -r '.git.depot' <<<"$MERGED_CONFIG")"
+
+        [[ -d "$depot/.git" ]] || {
+            warning "Clone Git (mode dev) : $repo"
+            git clone --depth 1 -b "$branch" "$repo" "$depot"
+        }
+    fi
+}
 
 ###############################################################################
 # Runtime state
 ###############################################################################
 
-STATE_JSON="$BASE_DIR/$(jq -r '.json.state' "$default_file")"
-[[ -f "$STATE_JSON" ]] || cat >"$STATE_JSON" <<EOF
-{ "status":"idle","lastAction":null,"lastRun":null,"errors":{"count":0,"last":null} }
+STATE_JSON="Overtchat/runtime/state.json"
+
+# Créer le fichier state.json si absent
+if [[ ! -f "$STATE_JSON" ]]; then
+  cat >"$STATE_JSON" <<EOF
+{
+  "status":"idle",
+  "lastAction":null,
+  "lastRun":null,
+  "errors":{"count":0,"last":null}
+}
 EOF
-
-###############################################################################
-# Script resolver & runner
-###############################################################################
-
-resolve_script() {
-    local name="$1"
-    local paths="$BASE_DIR/$(jq -r '.json.paths' "$default_file")"
-    local rel
-
-    rel="$(jq -r ".scripts.$name // empty" "$paths")"
-    [[ -n "$rel" && -f "$BASE_DIR/$rel" ]] || return 1
-    chmod +x "$BASE_DIR/$rel" 2>/dev/null || true
-    echo "$BASE_DIR/$rel"
-}
-
-run_action() {
-    script="$(resolve_script "$1")" || { error "Script introuvable"; return 1; }
-    info "Exécution : $1"
-    bash "$script"
-}
+fi
 
 ###############################################################################
 # Logo
 ###############################################################################
-logo=$BASE_DIR/$(jq -r '.start.logo' "$default_file")
 
-if [[ ! -f "$logo" ]]; then
-    info "Téléchargement du Logo"
-    curl -fsSL \
-      https://raw.githubusercontent.com/Servus33/Overtchat/main/components/service/lib/$(basename -- "$logo") \
-      -o "$(basename -- "$logo")" || {
-        error "Échec du téléchargement du Logo"
-      }
+LOGO_SCRIPT="Overtchat/components/service/lib/logo.sh"
+
+if [[ -x "$LOGO_SCRIPT" ]]; then
+    bash "$LOGO_SCRIPT"
+else
+    warning "logo.sh introuvable ou non exécutable"
 fi
-
-clear
-[[ -f "$logo" ]] && bash $logo
 
 ###############################################################################
 # Menu
@@ -249,6 +241,7 @@ Détail des Options :
     7 - Permet de voir les services < installé / actif / anomalies >
 
 EOF
+
 read -rp "Votre choix : " c
 case "$c" in
   1) exit 0 ;;
