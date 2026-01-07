@@ -7,6 +7,8 @@
 set -euo pipefail
 export PS4='+ [${BASH_SOURCE}:${LINENO}] '
 
+IFS=$'\n'
+
 ###############################################################################
 # Globals
 ###############################################################################
@@ -23,10 +25,10 @@ default_file="$DATA/config/config-base.json"
 # UI helpers
 ###############################################################################
 
-valid()   { echo -e "\033[1;32m$*\033[0m"; }
-info()    { echo -e "\033[1;34m$*\033[0m"; }
-warning() { echo -e "\033[1;33m$*\033[0m"; }
-error()   { echo -e "\033[1;31m$*\033[0m"; }
+valid()   { echo -e "\033[1;32mVALIDE\033[0m $*"; }
+info()    { echo -e "\033[1;34mINFO\033[0m $*"; }
+warning() { echo -e "\033[1;33mALERTE\033[0m $*"; }
+error()   { echo -e "\033[1;31mERREUR\033[0m $*"; }
 
 ###############################################################################
 # Guards
@@ -111,17 +113,21 @@ jq empty "$default_file" || exit 1
 # Base folders & files
 ###############################################################################
 
-JSON="$default_file"
-GIT_BASE_URL="https://raw.githubusercontent.com/Servus033/null/main"
-
 fetch_file() {
     local url="$1"
     local dest="$2"
+    echo "1> $url"
+    echo "2> $dest"
+
+    if [[ -f "$HOME/$dest" ]]; then
+        warning "$dest"
+        return 0
+    fi
 
     if curl -fsSL "$url" -o "$dest"; then
-        echo "[OK] $dest"
+        info "$dest"
     else
-        echo "[MISS] $dest (créé vide)"
+        error "$dest (créé vide)"
         touch "$dest"
     fi
 }
@@ -131,35 +137,42 @@ create_tree() {
     local json_path="$2"
     local repo_path="$3"
 
-    # Si c'est un array → fichiers
-    if jq -e "$json_path | type == \"array\"" "$JSON" >/dev/null; then
-        jq -r "$json_path[]" "$JSON" | while read -r file; do
+    local repo
+    repo="$(jq -r '.git.brutegit' "$default_file")"
+    branch="$(jq -r '.git.branch' "$default_file")"
+
+    # ARRAY = fichiers
+    if jq -e "$json_path | type == \"array\"" "$default_file" >/dev/null; then
+        mapfile -t files < <(jq -r "$json_path[]" "$default_file")
+        for file in "${files[@]}"; do
             local dest="$base_path/$file"
-            local url="$GIT_BASE_URL/$repo_path/$file"
+            local url="$repo/$repo_path/$file"
             fetch_file "$url" "$dest"
         done
+        return 0
     fi
 
-    # Si c'est un objet → sous-dossiers
-    if jq -e "$json_path | type == \"object\"" "$JSON" >/dev/null; then
-        jq -r "$json_path | keys[]" "$JSON" | while read -r key; do
-            mkdir -p "$base_path/$key"
-            create_tree "$base_path/$key" "$json_path[\"$key\"]" "$repo_path/$key"
+    # OBJECT = dossiers
+    if jq -e "$json_path | type == \"object\"" "$default_file" >/dev/null; then
+        mapfile -t keys < <(jq -r "$json_path | keys[]" "$default_file")
+        for key in "${keys[@]}"; do
+            local dir="$base_path/$key"
+            mkdir -p "$dir"
+            valid "$dir"
+            create_tree "$dir" "$json_path[\"$key\"]" "$repo_path/$key"
         done
     fi
 }
 
-ROOT=$(jq -r 'keys[]' "$JSON")
+create_tree "Overtchat" ".Overtchat" "Overtchat/main"
 
-mkdir -p "$ROOT"
-create_tree "$ROOT" ".\"$ROOT\"" "$ROOT"
-find Overtchat -name "*.sh" -exec chmod +x {} \;
+find Overtchat -type f -name "*.sh" -exec chmod +x {} \;
 
 ###############################################################################
 # Merge config
 ###############################################################################
 
-CONFIG_DIR="$HOME/Overtchat/config"
+CONFIG_DIR="$DATA/config"
 for f in config-base.json config.json defaults.json irix.json paths.json schema.json; do
     [[ -f "$CONFIG_DIR/$f" ]] || echo '{}' >"$CONFIG_DIR/$f"
 done
@@ -195,7 +208,7 @@ git_init() {
 # Runtime state
 ###############################################################################
 
-STATE_JSON="Overtchat/runtime/state.json"
+STATE_JSON="$DATA/runtime/state.json"
 
 # Créer le fichier state.json si absent
 if [[ ! -f "$STATE_JSON" ]]; then
@@ -213,10 +226,9 @@ fi
 # Logo
 ###############################################################################
 
-LOGO_SCRIPT="Overtchat/components/service/lib/logo.sh"
 
-if [[ -x "$LOGO_SCRIPT" ]]; then
-    bash "$LOGO_SCRIPT"
+if [[ -f "bash Overtchat/components/service/lib/logo.sh" ]]; then
+    bash "bash Overtchat/components/service/lib/logo.sh"
 else
     warning "logo.sh introuvable ou non exécutable"
 fi

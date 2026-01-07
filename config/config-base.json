@@ -3,10 +3,10 @@
         "version": "1.0.0"
     },
     "Overtchat": {
-        "bootstrap": [
+        "Bootstrap": [
             "overtchat-setup"
         ],
-        "builder": [
+        "Builder": [
             "builder.json",
             "MAKEFILE",
             "build.sh",
@@ -14,8 +14,8 @@
             "encrypt.sh",
             "package.sh"
         ],
-        "components": {
-            "server": {
+        "Components": {
+            "Serveur": {
                 "bin": [
                     "start.sh"
                 ],
@@ -27,7 +27,7 @@
                     "uninstall.sh"
                 ]
             },
-            "service": {
+            "Service": {
                 "bin": [
                     "start.sh"
                 ],
@@ -41,7 +41,7 @@
                 ]
             }
         },
-        "config": [
+        "Config": [
             "config-base.json",
             "config.json",
             "defaults.json",
@@ -49,10 +49,10 @@
             "paths.json",
             "schema.json"
         ],
-        "installer": [
+        "Installer": [
             "config.sh",
             "install.sh",
-            "installirix",
+            "installirix.sh",
             "preflight.sh",
             "repair.sh",
             "state.sh",
@@ -61,21 +61,19 @@
             "uninstall.sh",
             "update.sh"
         ],
-        "runtime": {
-            "files": [
-                "cmds_irix.json",
-                "state.json",
-                "version.json"
-            ],
-            "logs": []
-        }
+        "Runtime": [
+            "cmds_irix.json",
+            "state.json",
+            "version.json"
+        ],
+        "Runtime/Logs": []
     },
     "git": {
         "enabled": true,
-        "brutegit": "https://raw.githubusercontent.com",
-        "repository": "https://github.com/Servus33/Overtchat.git",
+        "brutegit": "https://raw.githubusercontent.com/Servus33",
+        "repository": "https://github.com/SerVuS33/Overtchat.git",
         "depot": "/tmp/.Overtchat",
-        "owner": "Servus33",
+        "owner": "SerVuS33",
         "repo": "Overtchat",
         "branch": "main"
     }
